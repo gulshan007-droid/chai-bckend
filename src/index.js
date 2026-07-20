@@ -1,18 +1,19 @@
 import express from "express";
-import { connection } from "./db/db.js";
-
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const app = express();
 
-connection();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// In-memory request tracker
 let requestTracker = {};
 
+// Rate Limiter Middleware
 const rateLimiter = (req, res, next) => {
-  const max = 5;
+  const maxRequests = 5;
   const windowTime = 5 * 60 * 1000; // 5 minutes
 
   const ip = req.ip;
@@ -23,19 +24,17 @@ const rateLimiter = (req, res, next) => {
       count: 1,
       startTime: currentTime,
     };
-
     return next();
   }
 
   const user = requestTracker[ip];
 
-  console.log("currentTime:", currentTime);
-  console.log("startTime:", user.startTime);
-
+  // Same time window
   if (currentTime - user.startTime < windowTime) {
-    if (user.count >= max) {
+    if (user.count >= maxRequests) {
       return res.status(429).json({
-        message: "Too many requests",
+        success: false,
+        message: "Too many requests. Please try again later.",
       });
     }
 
@@ -43,6 +42,7 @@ const rateLimiter = (req, res, next) => {
     return next();
   }
 
+  // Reset window
   requestTracker[ip] = {
     count: 1,
     startTime: currentTime,
@@ -51,32 +51,50 @@ const rateLimiter = (req, res, next) => {
   next();
 };
 
+// Apply middleware globally
 app.use(rateLimiter);
-
-// ¸
-
-// (async () => {
-//   try {
-//     await mongoose.connect(
-//       `${process.env.Mongo_uri}/${DB_NAME}`
-//     );
-
-//     console.log("MongoDB Connected");
-
-//     app.listen(process.env.PORT, () => {
-//       console.log(`Server running on port ${process.env.PORT}`);
-//     });
-
-//   } catch (err) {
-//     console.error("Database Connection Error:", err);
-//     process.exit(1);
-//   }
-// })();
-
-app.get("/app", (req, res) => {
-  res.send("app is working");
+// Home Route
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Welcome to Node.js Rate Limiter API",
+  });
 });
 
-app.listen(6001, () => {
-  console.log("Server running on port 6001");
+// Users Route
+app.get("/api/v1/users", (req, res) => {
+  res.json({
+    success: true,
+    users: [
+      {
+        id: 1,
+        name: "John",
+      },
+      {
+        id: 2,
+        name: "Alice",
+      },
+    ],
+  });
+});
+
+// Create User
+app.post("/api/v1/users", (req, res) => {
+  const { name, email } = req.body;
+
+  res.status(201).json({
+    success: true,
+    message: "User created successfully",
+    user: {
+      name,
+      email,
+    },
+  });
+});
+
+// Start Server
+const PORT = 6001;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
