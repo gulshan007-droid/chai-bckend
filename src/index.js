@@ -78,6 +78,22 @@ app.get("/api/v1/users", (req, res) => {
   });
 });
 
+app.get("/api/v1/usersids", (req, res) => {
+  res.json({
+    success: true,
+    users: [
+      {
+        id: 1,
+        name: "gullu",
+      },
+      {
+        id: 2,
+        name: "goluy",
+      },
+    ],
+  });
+});
+
 // Create User
 app.post("/api/v1/users", (req, res) => {
   const { name, email } = req.body;
